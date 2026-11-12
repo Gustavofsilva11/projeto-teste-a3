@@ -8,6 +8,13 @@
       "when": 1794320839096,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794489369950,
+      "tag": "0001_single_shared_a3",
+      "breakpoints": true
     }
   ]
 }

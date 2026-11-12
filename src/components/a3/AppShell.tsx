@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard, PlusCircle, History, CalendarDays, BarChart3, Settings, KeyRound,
+  LayoutDashboard, PlusCircle, History, BarChart3, Settings,
   Search, Bell, LogOut, Menu, ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,9 +19,7 @@ export const useGlobalSearch = () => useContext(SearchCtx);
 const nav = [
   { to: "/", label: "Painel", icon: LayoutDashboard },
   { to: "/emprestimos", label: "Novo Empréstimo", icon: PlusCircle },
-  { to: "/certificados", label: "Certificados", icon: KeyRound },
   { to: "/historico", label: "Histórico", icon: History },
-  { to: "/calendario", label: "Calendário", icon: CalendarDays },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
@@ -141,7 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Pesquisar por nome, setor, certificado, motivo…"
+                placeholder="Pesquisar por nome, setor, motivo…"
                 className="h-10 w-full rounded-xl border border-border bg-surface/60 pl-9 pr-16 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
               />
               <kbd className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border px-1.5 text-[10px] text-muted-foreground sm:block">Ctrl K</kbd>
@@ -156,7 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <PopoverContent align="end" className="w-80">
                 <div className="mb-2 text-sm font-semibold">Notificações</div>
                 {overdue.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum certificado atrasado. Tudo em ordem.</p>
+                  <p className="text-sm text-muted-foreground">O A3 não está atrasado. Tudo em ordem.</p>
                 ) : (
                   <ul className="space-y-2">
                     {overdue.map((l) => (

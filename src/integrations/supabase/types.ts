@@ -64,7 +64,7 @@ export type Database = {
         }
         Insert: {
           actual_return_date?: string | null
-          certificate_id: string
+          certificate_id?: string
           checkout_date?: string
           created_at?: string
           department?: string
@@ -90,15 +90,7 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "loans_certificate_id_fkey"
-            columns: ["certificate_id"]
-            isOneToOne: false
-            referencedRelation: "certificates"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {

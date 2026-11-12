@@ -4,22 +4,22 @@ import { Eye, Pencil, Trash2, Undo2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { fmtDateTime, loanStatus, type Certificate, type Loan } from "@/lib/a3";
+import { fmtDateTime, loanStatus, type Loan } from "@/lib/a3";
 import { StatusBadge } from "./StatusBadge";
 import { EditLoanDialog, ReturnDialog } from "./Dialogs";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export function LoanTable({ loans, certs, compact }: { loans: Loan[]; certs: Certificate[]; compact?: boolean }) {
+export function LoanTable({ loans, compact }: { loans: Loan[]; compact?: boolean }) {
   const qc = useQueryClient();
   const [ret, setRet] = useState<Loan | null>(null);
   const [edit, setEdit] = useState<Loan | null>(null);
   const [view, setView] = useState<Loan | null>(null);
   const [del, setDel] = useState<Loan | null>(null);
-  const certName = (id: string) => certs.find((c) => c.id === id)?.name ?? "—";
 
   async function remove() {
     if (!del) return;
@@ -27,7 +27,6 @@ export function LoanTable({ loans, certs, compact }: { loans: Loan[]; certs: Cer
     if (error) { toast.error(error.message); return; }
     toast.success("Registro excluído");
     qc.invalidateQueries({ queryKey: ["loans"] });
-    qc.invalidateQueries({ queryKey: ["certificates"] });
     setDel(null);
   }
 
@@ -39,7 +38,6 @@ export function LoanTable({ loans, certs, compact }: { loans: Loan[]; certs: Cer
         <table className="w-full min-w-[820px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
-              <th className="py-2 pr-3 font-medium">Certificado</th>
               <th className="py-2 pr-3 font-medium">Funcionário</th>
               <th className="py-2 pr-3 font-medium">Setor</th>
               <th className="py-2 pr-3 font-medium">Motivo</th>
@@ -63,7 +61,6 @@ export function LoanTable({ loans, certs, compact }: { loans: Loan[]; certs: Cer
                     exit={{ opacity: 0 }}
                     className={`border-b border-border/60 transition-colors hover:bg-accent/40 ${st === "atrasado" ? "bg-destructive/5" : ""}`}
                   >
-                    <td className="py-2.5 pr-3 font-medium">{certName(l.certificate_id)}</td>
                     <td className="py-2.5 pr-3">{l.employee_name}</td>
                     <td className="py-2.5 pr-3 text-muted-foreground">{l.department}</td>
                     <td className="max-w-[200px] truncate py-2.5 pr-3 text-muted-foreground">{l.purpose}</td>
@@ -73,12 +70,12 @@ export function LoanTable({ loans, certs, compact }: { loans: Loan[]; certs: Cer
                     <td className="py-2.5 pr-3"><StatusBadge status={st} /></td>
                     <td className="py-2.5">
                       <div className="flex gap-0.5">
-                        <button aria-label="Ver" className={iconBtn} onClick={() => setView(l)}><Eye className="size-4" /></button>
-                        <button aria-label="Editar" className={iconBtn} onClick={() => setEdit(l)}><Pencil className="size-4" /></button>
+                        <Button size="icon" variant="ghost" aria-label="Ver" className={iconBtn} onClick={() => setView(l)}><Eye className="size-4" /></Button>
+                        <Button size="icon" variant="ghost" aria-label="Editar" className={iconBtn} onClick={() => setEdit(l)}><Pencil className="size-4" /></Button>
                         {st !== "devolvido" && (
-                          <button aria-label="Registrar devolução" className={iconBtn} onClick={() => setRet(l)}><Undo2 className="size-4" /></button>
+                          <Button size="icon" variant="ghost" aria-label="Registrar devolução" className={iconBtn} onClick={() => setRet(l)}><Undo2 className="size-4" /></Button>
                         )}
-                        <button aria-label="Excluir" className={iconBtn} onClick={() => setDel(l)}><Trash2 className="size-4" /></button>
+                        <Button size="icon" variant="ghost" aria-label="Excluir" className={iconBtn} onClick={() => setDel(l)}><Trash2 className="size-4" /></Button>
                       </div>
                     </td>
                   </motion.tr>
@@ -98,7 +95,6 @@ export function LoanTable({ loans, certs, compact }: { loans: Loan[]; certs: Cer
           {view && (
             <dl className="grid grid-cols-2 gap-3 text-sm">
               {[
-                ["Certificado", certName(view.certificate_id)],
                 ["Funcionário", view.employee_name],
                 ["Setor", view.department],
                 ["Motivo", view.purpose],

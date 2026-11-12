@@ -3,32 +3,38 @@ import { queryOptions, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-export type Certificate = Database["public"]["Tables"]["certificates"]["Row"];
-export type Loan = Database["public"]["Tables"]["loans"]["Row"];
+
+export type Loan = Omit<Database["public"]["Tables"]["loans"]["Row"], "certificate_id">;
 
 /** Display status of a loan: overdue is derived, never stored. */
 export type LoanDisplayStatus = "em_uso" | "atrasado" | "devolvido";
-export type CertDisplayStatus = "disponivel" | "em_uso" | "atrasado" | "inativo";
+export type CertDisplayStatus = "disponivel" | "em_uso" | "atrasado";
 
 export function loanStatus(loan: Pick<Loan, "actual_return_date" | "expected_return_date">, now = new Date()): LoanDisplayStatus {
   if (loan.actual_return_date) return "devolvido";
   return new Date(loan.expected_return_date).getTime() < now.getTime() ? "atrasado" : "em_uso";
 }
 
-export function activeLoanFor(certId: string, loans: Loan[]) {
-  return loans.find((l) => l.certificate_id === certId && !l.actual_return_date);
+export function currentLoan(loans: Loan[]) {
+  return loans.find((l) => !l.actual_return_date);
 }
 
-export function certStatus(cert: Certificate, loans: Loan[], now = new Date()): CertDisplayStatus {
-  if (cert.status === "inativo") return "inativo";
-  const active = activeLoanFor(cert.id, loans);
-  if (!active) return "disponivel";
-  return loanStatus(active, now) === "atrasado" ? "atrasado" : "em_uso";
+export function a3Status(loans: Loan[], now = new Date()): CertDisplayStatus {
+  const active = currentLoan(loans);
+  return active ? loanStatus(active, now) === "atrasado" ? "atrasado" : "em_uso" : "disponivel";
 }
 
-/** A certificate can only be loaned when it is available. */
-export function canLoan(cert: Certificate, loans: Loan[]) {
-  return certStatus(cert, loans) === "disponivel";
+export function canLoan(loans: Loan[]) {
+  return !currentLoan(loans);
+}
+
+export function remainingLabel(expected: string, now = new Date()) {
+  const ms = new Date(expected).getTime() - now.getTime();
+  return ms < 0 ? overdueLabel(expected, now) : `Restam ${durationLabel(ms)}`;
+}
+
+export function loanError(error: { code?: string; message: string }) {
+  return error.code === "23505" ? "O A3 já está em uso. Registre a devolução antes de um novo empréstimo." : error.message;
 }
 
 export function overdueLabel(expected: string, now = new Date()) {
@@ -42,25 +48,15 @@ export function overdueLabel(expected: string, now = new Date()) {
 
 export const STATUS_LABEL: Record<CertDisplayStatus | LoanDisplayStatus, string> = {
   disponivel: "Disponível",
-  em_uso: "Em uso",
+  em_uso: "Em Uso",
   atrasado: "Atrasado",
-  inativo: "Inativo",
   devolvido: "Devolvido",
 };
-
-export const certificatesQuery = queryOptions({
-  queryKey: ["certificates"],
-  queryFn: async () => {
-    const { data, error } = await supabase.from("certificates").select("*").order("name");
-    if (error) throw error;
-    return data;
-  },
-});
 
 export const loansQuery = queryOptions({
   queryKey: ["loans"],
   queryFn: async () => {
-    const { data, error } = await supabase.from("loans").select("*").order("checkout_date", { ascending: false });
+    const { data, error } = await supabase.from("loans").select("id, employee_name, department, purpose, notes, checkout_date, expected_return_date, actual_return_date, status, created_at, updated_at").order("checkout_date", { ascending: false });
     if (error) throw error;
     return data;
   },
@@ -73,11 +69,7 @@ export function useRealtimeSync() {
       .channel(`a3-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "loans" }, () => {
         qc.invalidateQueries({ queryKey: ["loans"] });
-        qc.invalidateQueries({ queryKey: ["certificates"] });
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "certificates" }, () =>
-        qc.invalidateQueries({ queryKey: ["certificates"] }),
-      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);

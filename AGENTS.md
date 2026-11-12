@@ -29,5 +29,6 @@ use the editor.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
 
-- A3 Guardian: overdue status is derived in `src/lib/a3.ts` from expected_return_date (never stored); certificate in-use status is kept in sync by DB triggers on `loans`. Why: no cron, single source of truth for loan rules.
+- Derive current custody and overdue status from `loans` in `src/lib/a3.ts`; enforce one open loan with a partial unique database index. Why: concurrent writes cannot create multiple current holders, and no inventory or cron is needed.
+- Legacy inventory storage is deprecated and inaccessible to application users; do not query it or include its identifier in loan payloads. Why: safe schema transition without disrupting existing historical records.
 - Each page wraps itself in `AppShell` (auth guard, sidebar, global search context). Why: `/` must stay `src/routes/index.tsx`.

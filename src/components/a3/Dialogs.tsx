@@ -2,17 +2,15 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { canLoan, certificatesQuery, loansQuery, toLocalInput, type Certificate, type Loan } from "@/lib/a3";
+import { canLoan, currentLoan, loanError, loansQuery, toLocalInput, type Loan } from "@/lib/a3";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function refresh(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["loans"] });
-  qc.invalidateQueries({ queryKey: ["certificates"] });
 }
 
 export function ReturnDialog({ loan, open, onOpenChange }: { loan: Loan | null; open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -36,7 +34,7 @@ export function ReturnDialog({ loan, open, onOpenChange }: { loan: Loan | null; 
       .update({ actual_return_date: new Date(date).toISOString(), notes: notes || null })
       .eq("id", loan.id);
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(loanError(error)); return; }
     toast.success("Devolução registrada");
     refresh(qc);
     onOpenChange(false);
@@ -71,11 +69,10 @@ export function ReturnDialog({ loan, open, onOpenChange }: { loan: Loan | null; 
 
 export function LoanForm({ loan, onDone }: { loan?: Loan | null; onDone?: () => void }) {
   const qc = useQueryClient();
-  const certs = useQuery(certificatesQuery);
   const loans = useQuery(loansQuery);
+  const [returnOpen, setReturnOpen] = useState(false);
   const now = new Date();
   const [f, setF] = useState({
-    certificate_id: loan?.certificate_id ?? "",
     employee_name: loan?.employee_name ?? "",
     department: loan?.department ?? "",
     purpose: loan?.purpose ?? "",
@@ -88,11 +85,10 @@ export function LoanForm({ loan, onDone }: { loan?: Loan | null; onDone?: () => 
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!f.certificate_id) { toast.error("Selecione um certificado"); return; }
+    if (!loan && (loans.isPending || loans.isError || !canLoan(loans.data ?? []))) { toast.error("O A3 não está disponível para retirada."); return; }
     if (new Date(f.expected) <= new Date(f.checkout)) { toast.error("A previsão de devolução deve ser depois da retirada"); return; }
     setBusy(true);
     const payload = {
-      certificate_id: f.certificate_id,
       employee_name: f.employee_name.trim(),
       department: f.department.trim(),
       purpose: f.purpose.trim(),
@@ -104,32 +100,19 @@ export function LoanForm({ loan, onDone }: { loan?: Loan | null; onDone?: () => 
       ? await supabase.from("loans").update(payload).eq("id", loan.id)
       : await supabase.from("loans").insert(payload);
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(loan ? "Empréstimo atualizado" : "Empréstimo registrado — certificado agora Em uso");
+    if (error) { toast.error(loanError(error)); return; }
+    toast.success(loan ? "Empréstimo atualizado" : "Empréstimo registrado — A3 em uso");
     refresh(qc);
     onDone?.();
-    if (!loan) setF((p) => ({ ...p, certificate_id: "", employee_name: "", department: "", purpose: "", notes: "" }));
+    if (!loan) setF((p) => ({ ...p, employee_name: "", department: "", purpose: "", notes: "" }));
   }
 
-  const list = certs.data ?? [];
+  const active = currentLoan(loans.data ?? []);
+  if (!loan && loans.isPending) return <p className="text-muted-foreground">Consultando situação do A3…</p>;
+  if (!loan && loans.isError) return <p role="alert" className="text-destructive">Não foi possível consultar a situação do A3.</p>;
+  if (!loan && active) return <div className="space-y-3"><p className="font-medium">A3 atualmente com {active.employee_name}</p><p className="text-sm text-muted-foreground">{active.department} · {active.purpose}</p><ReturnDialog loan={active} open={returnOpen} onOpenChange={setReturnOpen} /><Button onClick={() => setReturnOpen(true)}>Registrar devolução</Button></div>;
   return (
     <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-      <div className="space-y-2 sm:col-span-2">
-        <Label>Certificado</Label>
-        <Select value={f.certificate_id} onValueChange={set("certificate_id")} disabled={!!loan}>
-          <SelectTrigger><SelectValue placeholder="Selecione o certificado" /></SelectTrigger>
-          <SelectContent>
-            {list.map((c: Certificate) => {
-              const ok = canLoan(c, loans.data ?? []) || c.id === loan?.certificate_id;
-              return (
-                <SelectItem key={c.id} value={c.id} disabled={!ok}>
-                  {c.name} {ok ? "" : "· indisponível"}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-      </div>
       <div className="space-y-2">
         <Label htmlFor="emp">Funcionário</Label>
         <Input id="emp" required maxLength={120} value={f.employee_name} onChange={(e) => set("employee_name")(e.target.value)} />
@@ -169,60 +152,6 @@ export function EditLoanDialog({ loan, open, onOpenChange }: { loan: Loan | null
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>Editar empréstimo</DialogTitle></DialogHeader>
         {loan && <LoanForm key={loan.id} loan={loan} onDone={() => onOpenChange(false)} />}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-export function CertificateDialog({ cert, open, onOpenChange }: { cert: Certificate | null; open: boolean; onOpenChange: (o: boolean) => void }) {
-  const qc = useQueryClient();
-  const [f, setF] = useState({ name: "", serial_number: "", type: "e-CNPJ A3", notes: "", inativo: false });
-  useEffect(() => {
-    if (open)
-      setF({
-        name: cert?.name ?? "",
-        serial_number: cert?.serial_number ?? "",
-        type: cert?.type ?? "e-CNPJ A3",
-        notes: cert?.notes ?? "",
-        inativo: cert?.status === "inativo",
-      });
-  }, [open, cert]);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    const payload = {
-      name: f.name.trim(),
-      serial_number: f.serial_number.trim(),
-      type: f.type.trim(),
-      notes: f.notes.trim() || null,
-      status: f.inativo ? "inativo" : cert?.status === "em_uso" ? "em_uso" : "disponivel",
-    };
-    const { error } = cert
-      ? await supabase.from("certificates").update(payload).eq("id", cert.id)
-      : await supabase.from("certificates").insert(payload);
-    if (error) { toast.error(error.message); return; }
-    toast.success(cert ? "Certificado atualizado" : "Certificado cadastrado");
-    refresh(qc);
-    onOpenChange(false);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>{cert ? "Editar certificado" : "Novo certificado"}</DialogTitle></DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2"><Label htmlFor="cn">Nome</Label><Input id="cn" required maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label htmlFor="cs">Número de série</Label><Input id="cs" maxLength={60} value={f.serial_number} onChange={(e) => setF({ ...f, serial_number: e.target.value })} /></div>
-            <div className="space-y-2"><Label htmlFor="ct">Tipo</Label><Input id="ct" maxLength={60} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })} /></div>
-          </div>
-          <div className="space-y-2"><Label htmlFor="cno">Observações</Label><Textarea id="cno" maxLength={1000} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={f.inativo} onChange={(e) => setF({ ...f, inativo: e.target.checked })} className="accent-primary" />
-            Marcar como inativo
-          </label>
-          <DialogFooter><Button type="submit">Salvar</Button></DialogFooter>
-        </form>
       </DialogContent>
     </Dialog>
   );

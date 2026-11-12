@@ -13,9 +13,11 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Entrar · A3 Guardian" },
-      { name: "description", content: "Acesse o A3 Guardian para controlar seus certificados digitais A3." },
+      { name: "description", content: "Acesse o A3 Guardian para acompanhar quem está com o A3 compartilhado." },
       { property: "og:title", content: "Entrar · A3 Guardian" },
-      { property: "og:description", content: "Acesse o A3 Guardian para controlar seus certificados digitais A3." },
+      { property: "og:description", content: "Acesse o A3 Guardian para acompanhar quem está com o A3 compartilhado." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Login,

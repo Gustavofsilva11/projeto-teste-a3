@@ -6,7 +6,6 @@ const styles: Record<CertDisplayStatus | LoanDisplayStatus, string> = {
   devolvido: "bg-success/15 text-success border-success/25",
   em_uso: "bg-info/15 text-info border-info/25",
   atrasado: "bg-destructive/15 text-destructive border-destructive/30",
-  inativo: "bg-muted text-muted-foreground border-border",
 };
 
 export function StatusBadge({ status, className }: { status: CertDisplayStatus | LoanDisplayStatus; className?: string }) {

@@ -4,10 +4,10 @@ import { LoanForm } from "@/components/a3/Dialogs";
 import { pageHead } from "@/components/a3/meta";
 
 export const Route = createFileRoute("/emprestimos")({
-  head: pageHead("Novo Empréstimo", "Registre a retirada de um certificado digital A3."),
+  head: pageHead("Novo Empréstimo", "Registre quem está retirando o A3 compartilhado."),
   component: () => (
     <AppShell>
-      <PageHeader title="Novo Empréstimo" subtitle="Somente certificados disponíveis podem ser emprestados." />
+      <PageHeader title="Novo Empréstimo" subtitle="Retirada do A3 compartilhado." />
       <div className="glass-card max-w-3xl p-6"><LoanForm /></div>
     </AppShell>
   ),
