@@ -31,7 +31,7 @@ function Page() {
   async function del(c: Certificate) {
     if (!confirm(`Excluir ${c.name} e todo o seu histórico?`)) return;
     const { error } = await supabase.from("certificates").delete().eq("id", c.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Certificado excluído");
     qc.invalidateQueries({ queryKey: ["certificates"] }); qc.invalidateQueries({ queryKey: ["loans"] });
   }

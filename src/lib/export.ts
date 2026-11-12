@@ -18,7 +18,7 @@ export async function exportXlsx(rows: Row[], name: string) {
 
 export function exportCsv(rows: Row[], name: string) {
   if (!rows.length) return;
-  const headers = Object.keys(rows[0]);
+  const headers = Object.keys(rows[0]!);
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const csv = [headers.map(esc).join(";"), ...rows.map((r) => headers.map((h) => esc(r[h])).join(";"))].join("\n");
   download(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }), `${name}.csv`);
@@ -27,7 +27,7 @@ export function exportCsv(rows: Row[], name: string) {
 /** Opens a printable table; the browser's "Salvar como PDF" produces the file. */
 export function exportPdf(rows: Row[], title: string) {
   if (!rows.length) return;
-  const headers = Object.keys(rows[0]);
+  const headers = Object.keys(rows[0]!);
   const w = window.open("", "_blank");
   if (!w) return;
   const esc = (s: unknown) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);

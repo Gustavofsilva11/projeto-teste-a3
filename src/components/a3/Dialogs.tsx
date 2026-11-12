@@ -36,7 +36,7 @@ export function ReturnDialog({ loan, open, onOpenChange }: { loan: Loan | null; 
       .update({ actual_return_date: new Date(date).toISOString(), notes: notes || null })
       .eq("id", loan.id);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Devolução registrada");
     refresh(qc);
     onOpenChange(false);
@@ -88,8 +88,8 @@ export function LoanForm({ loan, onDone }: { loan?: Loan | null; onDone?: () => 
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!f.certificate_id) return toast.error("Selecione um certificado");
-    if (new Date(f.expected) <= new Date(f.checkout)) return toast.error("A previsão de devolução deve ser depois da retirada");
+    if (!f.certificate_id) { toast.error("Selecione um certificado"); return; }
+    if (new Date(f.expected) <= new Date(f.checkout)) { toast.error("A previsão de devolução deve ser depois da retirada"); return; }
     setBusy(true);
     const payload = {
       certificate_id: f.certificate_id,
@@ -104,7 +104,7 @@ export function LoanForm({ loan, onDone }: { loan?: Loan | null; onDone?: () => 
       ? await supabase.from("loans").update(payload).eq("id", loan.id)
       : await supabase.from("loans").insert(payload);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(loan ? "Empréstimo atualizado" : "Empréstimo registrado — certificado agora Em uso");
     refresh(qc);
     onDone?.();
@@ -200,7 +200,7 @@ export function CertificateDialog({ cert, open, onOpenChange }: { cert: Certific
     const { error } = cert
       ? await supabase.from("certificates").update(payload).eq("id", cert.id)
       : await supabase.from("certificates").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(cert ? "Certificado atualizado" : "Certificado cadastrado");
     refresh(qc);
     onOpenChange(false);

@@ -93,7 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const name = (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "Usuário";
+  const name = (user.user_metadata?.["full_name"] as string) || user.email?.split("@")[0] || "Usuário";
   const initials = name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
   const sidebarFooter = (

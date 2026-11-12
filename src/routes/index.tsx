@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
   component: () => (<AppShell><Dashboard /></AppShell>),
 });
 
-function Kpi({ icon: Icon, value, label, tone, trend, i }: { icon: typeof Clock; value: string | number; label: string; tone: string; trend?: string; i: number }) {
+function Kpi({ icon: Icon, value, label, tone, trend, i }: { icon: typeof Clock; value: string | number; label: string; tone: string; trend?: string | undefined; i: number }) {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} whileHover={{ y: -2 }}
       className={`glass-card p-5 transition-colors ${tone}`}>
@@ -64,7 +64,7 @@ function Dashboard() {
   const featured = C.find((c) => certStatus(c, L, now) === "atrasado") ?? C.find((c) => certStatus(c, L, now) === "em_uso") ?? C[0];
   const fLoan = featured ? activeLoanFor(featured.id, L) : undefined;
   const fStatus = featured ? certStatus(featured, L, now) : "disponivel";
-  const first = ((user?.user_metadata?.full_name as string) || user?.email || "").split(/[ @]/)[0];
+  const first = ((user?.user_metadata?.["full_name"] as string) || user?.email || "").split(/[ @]/)[0];
   const filtered = L.filter((l) => matchLoan(l, q, C));
   const certName = (id: string) => C.find((c) => c.id === id)?.name ?? "";
   const heroTone = fStatus === "atrasado" ? "text-destructive" : fStatus === "em_uso" ? "text-success" : "text-info";
@@ -170,7 +170,7 @@ function Info({ icon: Icon, label, value, sub }: { icon: typeof Clock; label: st
 function Timeline({ loans, certName }: { loans: Loan[]; certName: (id: string) => string }) {
   const events = loans.flatMap((l) => {
     const st = loanStatus(l);
-    const ev = [{ id: l.id + "o", at: l.checkout_date, text: `${l.employee_name} retirou ${certName(l.certificate_id)}`, sub: `Motivo: ${l.purpose}`, status: st === "devolvido" ? ("em_uso" as const) : st }];
+    const ev = [{ id: l.id + "o", at: l.checkout_date, text: `${l.employee_name} retirou ${certName(l.certificate_id)}`, sub: `Motivo: ${l.purpose}`, status: (st === "devolvido" ? "em_uso" : st) as "em_uso" | "atrasado" | "devolvido" }];
     if (l.actual_return_date) ev.push({ id: l.id + "r", at: l.actual_return_date, text: `${l.employee_name} devolveu ${certName(l.certificate_id)}`, sub: l.department, status: "devolvido" as const });
     if (st === "atrasado") ev.push({ id: l.id + "a", at: l.expected_return_date, text: `${l.employee_name} está com certificado atrasado`, sub: overdueLabel(l.expected_return_date), status: "atrasado" as const });
     return ev;

@@ -24,7 +24,7 @@ export function LoanTable({ loans, certs, compact }: { loans: Loan[]; certs: Cer
   async function remove() {
     if (!del) return;
     const { error } = await supabase.from("loans").delete().eq("id", del.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Registro excluído");
     qc.invalidateQueries({ queryKey: ["loans"] });
     qc.invalidateQueries({ queryKey: ["certificates"] });
